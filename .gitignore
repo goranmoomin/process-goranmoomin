@@ -135,3 +135,6 @@ all.config
 
 # Kdevelop4
 *.kdev4
+
+# json compilation database
+compile_commands.json
