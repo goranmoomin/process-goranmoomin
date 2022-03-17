@@ -1,27 +1,18 @@
 #include <linux/slab.h>
 #include <linux/syscalls.h>
+#include <linux/pinfo.h>
 
-struct pinfo {
-	long state;
-	pid_t pid;
-	uid_t uid;
-	char comm[TASK_COMM_LEN];
-	unsigned int depth;
-};
-
-void recurse_ptree(struct task_struct *task, int depth)
+static void copy_pinfo(struct pinfo *info, const struct task_struct *task,
+		       unsigned int depth)
 {
-	struct task_struct *next_task;
-
-	printk(KERN_INFO "recurse_ptree pid=%d,uid=%d,comm=%s,depth=%d\n",
-	       task->pid, task_uid(task), task->comm, depth);
-
-	list_for_each_entry (next_task, &task->children, sibling) {
-		recurse_ptree(next_task, depth + 1);
-	}
+	info->state = task->state;
+	info->depth = depth;
+	info->pid = task->pid;
+	info->uid = task_uid(task).val;
+	strscpy(info->comm, task->comm, TASK_COMM_LEN);
 }
 
-SYSCALL_DEFINE2(ptree, struct pinfo __user *, buf, size_t, maxlen)
+static long do_ptree(struct pinfo __user *buf, size_t maxlen)
 {
 	int err = -EINVAL;
 	struct pinfo *kbuf;
@@ -49,36 +40,35 @@ SYSCALL_DEFINE2(ptree, struct pinfo __user *, buf, size_t, maxlen)
 	next_task_stack[stack_ptr] = list_first_entry(
 		&init_task.children, typeof(**next_task_stack), sibling);
 
+	// always maxlen > 0 here
+	copy_pinfo(&kbuf[buflen++], &init_task, 0);
+
 	while (stack_ptr >= 0) {
+		// `task' is current task, `next_task' is the next child task of to push to stack
 		task = task_stack[stack_ptr];
-		// find next child not yet visited
 		next_task = next_task_stack[stack_ptr];
 
-		// check if there is a child to visit
+		// check if we have visited all child tasks of `task'
 		if (next_task && &next_task->sibling != &task->children) {
-			// update next child marker
+			// update next child task
 			next_task_stack[stack_ptr] =
 				list_next_entry(next_task, sibling);
 
-			// push the next child to the stack
+			// push the next child task to the stack
 			task_stack[++stack_ptr] = next_task;
 			next_task_stack[stack_ptr] = list_first_entry_or_null(
 				&next_task->children, typeof(**next_task_stack),
 				sibling);
 
-			printk(KERN_INFO
-			       "iterate_ptree pid=%d,uid=%d,comm=%s,depth=%d\n",
+			printk(KERN_DEBUG
+			       "iterate_ptree pid=%d,uid=%ld,comm=%s,depth=%d\n",
 			       next_task->pid, task_uid(next_task),
 			       next_task->comm, stack_ptr);
 
+			// check and break if there is no more space left in kernel buffer
 			if (buflen < maxlen) {
-				kbuf[buflen].state = next_task->state;
-				kbuf[buflen].depth = stack_ptr;
-				kbuf[buflen].pid = next_task->pid;
-				kbuf[buflen].uid = task_uid(next_task).val;
-				strscpy(kbuf[buflen].comm, next_task->comm,
-					TASK_COMM_LEN);
-				buflen++;
+				copy_pinfo(&kbuf[buflen++], next_task,
+					   stack_ptr);
 			} else {
 				break;
 			}
@@ -101,4 +91,9 @@ out:
 	kfree(task_stack);
 	kfree(next_task_stack);
 	return err;
+}
+
+SYSCALL_DEFINE2(ptree, struct pinfo __user *, buf, size_t, maxlen)
+{
+	return do_ptree(buf, maxlen);
 }

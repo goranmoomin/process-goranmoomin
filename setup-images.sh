@@ -72,7 +72,7 @@ mkrootfs() {
 	msg "mounting..."
 	mount -o sync "$1" "$MOUNTDIR"
 	msg "adding test binaries..."
-	find "$SCRIPTDIR" -maxdepth 1 -iname 'test_*' -executable -exec cp '{}' "$MOUNTDIR/root" \;
+	find "$SCRIPTDIR/test" -maxdepth 1 -iname 'test_*' -executable -exec cp '{}' "$MOUNTDIR/root" \;
 	msg "unmounting..."
 	umount "$MOUNTDIR"
 	msg "creating rootfs.img done."
