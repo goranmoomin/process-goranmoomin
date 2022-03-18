@@ -9,8 +9,8 @@
 int main(int argc, char **argv)
 {
 	if (argc != 2) {
-		fprintf(stderr, "Usage: %s buflen\n", argv[0]);
-		return 1;
+		printf("Usage: %s buflen\n", argv[0]);
+		return EXIT_FAILURE;
 	}
 
 	int buflen = atoi(argv[1]);
@@ -20,9 +20,21 @@ int main(int argc, char **argv)
 	long ret = syscall(294, pinfos, buflen);
 
 	if (ret < 0) {
-		fprintf(stderr, "syscall 294 failed with return code %ld\n",
-			ret);
-		return 1;
+		const char *errstr = "unknown";
+		switch (errno) {
+		case EINVAL:
+			errstr = "EINVAL";
+			break;
+		case ENOMEM:
+			errstr = "ENOMEM";
+			break;
+		case EFAULT:
+			errstr = "EFAULT";
+			break;
+		}
+		printf("syscall(294, %p, %d) failed with errno %d (%s)\n",
+		       pinfos, buflen, errno, errstr);
+		return EXIT_FAILURE;
 	}
 
 	for (int i = 0; i < ret; i++) {
@@ -35,5 +47,5 @@ int main(int argc, char **argv)
 		       pinfo.uid);
 	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }
