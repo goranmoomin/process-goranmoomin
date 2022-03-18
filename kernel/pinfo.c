@@ -36,11 +36,12 @@ static long do_ptree(struct pinfo __user *buf, size_t maxlen)
 
 	read_lock(&tasklist_lock);
 
-	task_stack[++stack_ptr] = &init_task;
+	// push initial values to the stack; always maxlen > 0 here
+	stack_ptr++;
+	task_stack[stack_ptr] = &init_task;
 	next_task_stack[stack_ptr] = list_first_entry(
 		&init_task.children, typeof(**next_task_stack), sibling);
 
-	// always maxlen > 0 here
 	copy_pinfo(&kbuf[buflen++], &init_task, 0);
 
 	while (stack_ptr >= 0) {
@@ -55,10 +56,15 @@ static long do_ptree(struct pinfo __user *buf, size_t maxlen)
 				list_next_entry(next_task, sibling);
 
 			// push the next child task to the stack
-			task_stack[++stack_ptr] = next_task;
-			next_task_stack[stack_ptr] = list_first_entry_or_null(
-				&next_task->children, typeof(**next_task_stack),
-				sibling);
+			stack_ptr++;
+			if (stack_ptr < maxlen) {
+				task_stack[stack_ptr] = next_task;
+				next_task_stack[stack_ptr] =
+					list_first_entry_or_null(
+						&next_task->children,
+						typeof(**next_task_stack),
+						sibling);
+			}
 
 			printk(KERN_DEBUG
 			       "iterate_ptree pid=%d,uid=%ld,comm=%s,depth=%d\n",
