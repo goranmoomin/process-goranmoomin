@@ -11,6 +11,26 @@ trap cleanup EXIT
 
 SCRIPTDIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
+usage() {
+	cat <<EOF
+Usage: $(basename -- "${BASH_SOURCE[0]}") [-h] [--noclang] [--noccache]
+
+Build the kernel and test programs.
+
+Available options:
+
+-h, --help
+	Print this help message and exit.
+
+--noclang
+	Do not use clang even if found.
+
+--noccache
+	Do not use ccache even if found.
+EOF
+	exit
+}
+
 msg() {
 	printf >&2 "%s\n" "${1:-}"
 }
@@ -30,17 +50,45 @@ ARCH=arm64
 CROSS_COMPILE="aarch64-linux-gnu-"
 CC="${CROSS_COMPILE}gcc"
 
+NOCLANG=
+NOCCACHE=
+
 cleanup() {
     trap - EXIT
 }
 
+parse_params() {
+	while :; do
+		case "${1:-}" in
+			-h | --help)
+				usage
+				;;
+			--noclang)
+				NOCLANG=on
+				;;
+			--noccache)
+				NOCCACHE=on
+				;;
+			-?*)
+				die "Unknown option: $1"
+				;;
+			*)
+				break
+				;;
+		esac
+		shift
+	done
+}
+
 main() {
-	if which clang &> /dev/null; then
+	parse_params "$@"
+
+	if [[ -z "$NOCLANG" ]] && which clang &> /dev/null; then
 		msg "clang found. using clang..."
 		CC=clang
 	fi
 
-	if which ccache &> /dev/null; then
+	if [[ -z "$NOCCACHE" ]] && which ccache &> /dev/null; then
 		msg "ccache found. using ccache..."
 		CC="ccache $CC"
 	fi
