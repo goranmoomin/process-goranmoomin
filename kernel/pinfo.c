@@ -12,6 +12,22 @@ static void copy_pinfo(struct pinfo *info, const struct task_struct *task,
 	strscpy(info->comm, task->comm, TASK_COMM_LEN);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
+
+static void recurse_ptree(struct task_struct *task, int depth)
+{
+	struct task_struct *next_task;
+	printk(KERN_INFO "recurse_ptree pid=%d,uid=%ld,comm=%d,depth=%d\n",
+	       task->pid, task_uid(task).val, task->comm, depth);
+
+	list_for_each_entry (next_task, &task->children, sibling) {
+		recurse_ptree(next_task, depth + 1);
+	}
+}
+
+#pragma clang diagnostic pop
+
 static long do_ptree(struct pinfo __user *buf, size_t maxlen)
 {
 	int err = -EINVAL;
