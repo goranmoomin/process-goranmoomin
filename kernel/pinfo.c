@@ -9,16 +9,17 @@ static void copy_pinfo(struct pinfo *info, const struct task_struct *task,
 	info->depth = depth;
 	info->pid = task->pid;
 	info->uid = task_uid(task).val;
-	strscpy(info->comm, task->comm, TASK_COMM_LEN);
+
+	strscpy(info->comm, task->comm, PINFO_COMM_LEN);
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 
 static void recurse_ptree(struct task_struct *task, int depth)
 {
 	struct task_struct *next_task;
-	printk(KERN_INFO "recurse_ptree pid=%d,uid=%ld,comm=%d,depth=%d\n",
+	printk(KERN_INFO "recurse_ptree pid=%d,uid=%d,comm=%s,depth=%d\n",
 	       task->pid, task_uid(task).val, task->comm, depth);
 
 	list_for_each_entry (next_task, &task->children, sibling) {
@@ -26,7 +27,7 @@ static void recurse_ptree(struct task_struct *task, int depth)
 	}
 }
 
-#pragma clang diagnostic pop
+#pragma GCC diagnostic pop
 
 static long do_ptree(struct pinfo __user *buf, size_t maxlen)
 {
@@ -83,8 +84,8 @@ static long do_ptree(struct pinfo __user *buf, size_t maxlen)
 			}
 
 			printk(KERN_DEBUG
-			       "iterate_ptree pid=%d,uid=%ld,comm=%s,depth=%d\n",
-			       next_task->pid, task_uid(next_task),
+			       "iterate_ptree pid=%d,uid=%d,comm=%s,depth=%d\n",
+			       next_task->pid, task_uid(next_task).val,
 			       next_task->comm, stack_ptr);
 
 			// check and break if there is no more space left in kernel buffer

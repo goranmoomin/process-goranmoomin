@@ -104,7 +104,7 @@ main() {
 	msg "kernel build done."
 
 	# Install kernel headers to ./usr
-	msg "installing kernel headers to $(basename "$INSTALL_HDR_PATH")..."
+	msg "installing kernel headers to $(basename "$TESTHDRDIR")..."
 	make -C "$SRCDIR" INSTALL_HDR_PATH="$TESTHDRDIR" headers_install
 	msg "kernel headers install done."
 
