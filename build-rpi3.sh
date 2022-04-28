@@ -114,7 +114,7 @@ main() {
 	make -C "$TESTSRCDIR" CC="$CC" CROSS_COMPILE="$CROSS_COMPILE" HDRDIR="$TESTHDRDIR" all
 	msg "test programs build done."
 
-	msg "procceed by running sudo ./setup-images.sh to create images for qemu."
+	msg "proceed by running sudo ./setup-images.sh to create images for qemu."
 }
 
 main "$@"
